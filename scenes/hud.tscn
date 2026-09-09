@@ -1,0 +1,50 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/hud.gd" id="1_hud"]
+
+[node name="HUD" type="CanvasLayer"]
+script = ExtResource("1_hud")
+
+[node name="Root" type="Control" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="ScoreLabel" type="Label" parent="Root"]
+offset_left = 24.0
+offset_top = 18.0
+offset_right = 324.0
+offset_bottom = 48.0
+theme_override_colors/font_color = Color(0.851, 0.929, 1, 1)
+theme_override_font_sizes/font_size = 22
+text = "SCORE 000000"
+
+[node name="LivesBox" type="HBoxContainer" parent="Root"]
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -224.0
+offset_top = 20.0
+offset_right = -24.0
+offset_bottom = 44.0
+alignment = 2
+theme_override_constants/separation = 6
+
+[node name="ControlsLabel" type="Label" parent="Root"]
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -44.0
+offset_right = 824.0
+offset_bottom = -18.0
+theme_override_colors/font_color = Color(0.451, 0.565, 0.722, 1)
+theme_override_font_sizes/font_size = 15
+text = "A / D  ROTATE      W  THRUST      SPACE  FIRE      R  RESTART"
+
+[node name="BannerLabel" type="Label" parent="Root"]
+anchor_right = 1.0
+offset_top = 250.0
+offset_bottom = 400.0
+theme_override_colors/font_color = Color(1, 0.941, 0.761, 1)
+theme_override_font_sizes/font_size = 34
+horizontal_alignment = 1
+vertical_alignment = 1
