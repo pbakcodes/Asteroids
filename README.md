@@ -1,169 +1,174 @@
 # Asteroids
 
-Klasyczne **Asteroids** napisane w Godot 4 — mały, ale kompletny projekt 2D:
-statek z bezwładnością, zawijana (wrap-around) arena, asteroidy dzielące się na
-mniejsze odłamki, punktacja, życia i fale przeciwników. Cała grafika to
-oryginalny pixel art wykonany lokalnie w Aseprite.
+A classic **Asteroids** game built with Godot 4 — a small but complete 2D
+project featuring an inertia-based spaceship, a wrap-around arena, asteroids
+that split into smaller fragments, scoring, lives, and enemy waves. All
+graphics are original pixel art created locally in Aseprite.
 
-![Rozgrywka](docs/screenshot.png)
+![Gameplay](docs/screenshot.png)
 
-## Wymagania
+## Requirements
 
-* **Godot 4.x** (projekt tworzony i weryfikowany na 4.7, `config/features = "4.7"`).
-* Brak zewnętrznych zależności, brak sieci, brak telemetrii.
+* **Godot 4.x** (developed and verified with 4.7,
+  `config/features = "4.7"`).
+* No external dependencies, network access, or telemetry.
 
-## Jak uruchomić
+## Running the game
 
-1. Otwórz katalog projektu w Godot (`Import` → wskaż `project.godot`).
-2. Naciśnij **F5** albo uruchom scenę główną `res://scenes/main.tscn`.
+1. Open the project directory in Godot (`Import` → select `project.godot`).
+2. Press **F5** or run the main scene at `res://scenes/main.tscn`.
 
-Z poziomu terminala, jeśli Godot jest w `PATH`. Świeży klon nie ma jeszcze
-katalogu `.godot/`, więc zasoby (tekstury) nie są zaimportowane i samo
-`godot --path .` wystartuje z brakującą grafiką. Najpierw wykonaj import:
+To run from a terminal, Godot must be available in `PATH`. A fresh clone does
+not have a `.godot/` directory yet, so its resources and textures have not
+been imported. Running only `godot --path .` at this point will start the game
+with missing graphics. Import the resources first:
 
 ```sh
-# jednorazowo po sklonowaniu — import zasobów
+# Run once after cloning to import resources
 godot --headless --path . --import
 
-# potem normalne uruchomienie
+# Then launch the game normally
 godot --path .
 ```
 
-Zamiast `--import` możesz też raz otworzyć projekt w edytorze
-(`godot --editor --path .`), poczekać aż zakończy się import i zamknąć go —
-efekt jest ten sam.
+Instead of using `--import`, you can open the project in the editor once with
+`godot --editor --path .`, wait for the import to finish, and close it.
 
-## Testy
+## Tests
 
 ```sh
-tests/run_split_stress.sh          # albo: GODOT_BIN=/ścieżka/do/godot tests/run_split_stress.sh
+tests/run_split_stress.sh  # or: GODOT_BIN=/path/to/godot tests/run_split_stress.sh
 ```
 
-`tests/split_stress.gd` to bezgłowy test regresji podziału asteroid: rozbija
-całą pierwszą falę aż do najmniejszych odłamków (dwa przebiegi, 9 podziałów
-każdy) i sprawdza liczbę odłamków, punktację, brak utraty żyć, przejście do
-kolejnej fali dopiero po zarejestrowaniu odroczonych spawnów oraz powtarzalność
-trajektorii. Skrypt powłoki dodatkowo zawodzi, gdy silnik zgłosi błędy
-serwera fizyki (`Can't change this state while flushing queries`), których
-GDScript nie jest w stanie zaobserwować z wnętrza gry.
+`tests/split_stress.gd` is a headless regression test for asteroid splitting.
+It destroys the entire first wave down to the smallest fragments twice, with
+nine splits per run. It verifies fragment counts, scoring, no lost lives, wave
+progression only after deferred spawns have been registered, and deterministic
+trajectories. The shell script also fails if the engine reports physics-server
+errors such as `Can't change this state while flushing queries`, which cannot
+be observed by GDScript from inside the game.
 
-## Sterowanie
+## Controls
 
-| Akcja          | Klawisze          |
-| -------------- | ----------------- |
-| Obrót w lewo   | `A` / `←`         |
-| Obrót w prawo  | `D` / `→`         |
-| Ciąg (thrust)  | `W` / `↑`         |
-| Strzał         | `Spacja`          |
-| Restart        | `R`               |
+| Action       | Keys          |
+| ------------ | ------------- |
+| Rotate left  | `A` / `←`     |
+| Rotate right | `D` / `→`     |
+| Thrust       | `W` / `↑`     |
+| Fire         | `Space`       |
+| Restart      | `R`           |
 
-## Zasady gry
+## Gameplay
 
-* Statek przyspiesza w kierunku dziobu, ma bezwładność, lekkie tłumienie
-  prędkości, ograniczenie prędkości maksymalnej i krótki cooldown strzału.
-* Statek, pociski i asteroidy zawijają się na krawędziach areny 1280×720.
-* Asteroidy występują w trzech rozmiarach. Trafiona duża dzieli się na dwie
-  średnie, średnia na dwie małe, mała znika.
-* Punktacja: **duża 20**, **średnia 50**, **mała 100** — jak w oryginale
-  najmniejsze odłamki są najcenniejsze.
-* Pociski mają ograniczony czas życia i same się usuwają, więc chybione
-  strzały nie zostawiają śmieci w scenie.
-* Zderzenie z asteroidą kosztuje życie. Po respawnie statek jest przez chwilę
-  nietykalny (miga). Przy zerze żyć pojawia się ekran **GAME OVER**
-  z możliwością restartu.
-* Fale są **deterministyczne i ograniczone**: liczba asteroid rośnie od 3 do
-  maksymalnie 9, a generator losowy jest seedowany numerem fali, więc ten sam
-  numer fali zawsze daje ten sam układ startowy. Asteroidy nigdy nie pojawiają
-  się bliżej niż 260 px od statku.
+* The ship accelerates toward its nose and has inertia, light velocity
+  damping, a maximum speed, and a short firing cooldown.
+* The ship, bullets, and asteroids wrap around the edges of the 1280×720
+  arena.
+* Asteroids come in three sizes. A large asteroid splits into two medium
+  asteroids, a medium asteroid splits into two small ones, and a small
+  asteroid disappears when hit.
+* Scoring: **large 20**, **medium 50**, **small 100**. As in the original
+  game, the smallest fragments are worth the most points.
+* Bullets have a limited lifetime and remove themselves, so missed shots do
+  not leave stale nodes in the scene.
+* Colliding with an asteroid costs one life. After respawning, the ship
+  briefly becomes invulnerable and blinks. At zero lives, the **GAME OVER**
+  screen appears and the game can be restarted.
+* Waves are **deterministic and bounded**. The asteroid count grows from 3 to
+  a maximum of 9, and the random number generator is seeded with the wave
+  number, so each wave number always produces the same starting layout.
+  Asteroids never spawn within 260 pixels of the ship.
 
-## Architektura
+## Architecture
 
-```
-project.godot          konfiguracja, mapa wejścia, warstwy kolizji, filtr nearest
+```text
+project.godot          configuration, input map, collision layers, nearest filter
 scenes/
-  main.tscn            scena główna: tło, kontenery Asteroids/Bullets, Player, HUD
-  player.tscn          statek + sprite ciągu + kształt kolizji
-  asteroid.tscn        pojedyncza asteroida (rozmiar ustawiany w czasie działania)
-  bullet.tscn          pocisk
-  hud.tscn             warstwa interfejsu
+  main.tscn            main scene: background, Asteroids/Bullets containers, Player, HUD
+  player.tscn          ship, thrust sprite, and collision shape
+  asteroid.tscn        one asteroid, with its size configured at runtime
+  bullet.tscn          projectile
+  hud.tscn             interface layer
 scripts/
-  arena.gd             wspólna geometria areny i funkcja zawijania pozycji
-  main.gd              menedżer gry: fale, spawnowanie, punkty, życia, restart
-  player.gd            sterowanie, fizyka lotu, strzał, nietykalność
-  asteroid.gd          rozmiary, ruch, obrót, podział i wartość punktowa
-  bullet.gd            lot, czas życia, trafienie w asteroidę
-  hud.gd               wynik, ikony żyć, podpowiedzi sterowania, banner
+  arena.gd             shared arena geometry and position wrapping
+  main.gd              game manager: waves, spawning, score, lives, restart
+  player.gd            controls, flight physics, shooting, invulnerability
+  asteroid.gd          sizes, movement, rotation, splitting, point values
+  bullet.gd            movement, lifetime, asteroid hits
+  hud.gd               score, life icons, control hints, game-over banner
 assets/
-  aseprite/            edytowalne źródła .aseprite
-  sprites/             wyeksportowane PNG (przezroczyste, nearest-neighbour)
+  aseprite/            editable .aseprite source files
+  sprites/             exported transparent PNG files with nearest filtering
 tests/
-  split_stress.gd      bezgłowy test regresji podziału asteroid
-  run_split_stress.sh  uruchamia powyższy test i wyłapuje błędy serwera fizyki
-docs/                  zrzut ekranu do README (pomijany przez Godota, .gdignore)
+  split_stress.gd      headless asteroid-splitting regression test
+  run_split_stress.sh  runs the test and detects physics-server errors
+docs/                  README screenshot, ignored by Godot through .gdignore
 ```
 
-Zasady, których trzyma się kod:
+Code design principles:
 
-* **Typowany GDScript** i krótkie, jednoodpowiedzialnościowe skrypty — brak
-  jednego wielkiego pliku sterującego wszystkim.
-* Komunikacja przez **sygnały** (`Player.fired`, `Player.died`,
-  `Asteroid.destroyed`), a nie przez odpytywanie obcych węzłów.
-* Asteroidy dopisują się do **grupy** `Arena.ASTEROID_GROUP`, więc warunek
-  „fala wyczyszczona” nie zależy od tego, pod jakim rodzicem siedzą; nigdzie
-  nie ma bezwzględnych ścieżek w stylu `/root/Main/...`.
-* `Arena` to autonomiczny helper ze stałymi areny i funkcją `wrap()`, używany
-  przez statek, pociski i asteroidy — jedna definicja zawijania dla wszystkich.
-* Warstwy kolizji są nazwane w `project.godot`: `player`, `asteroids`,
-  `bullets`; maski są minimalne (asteroidy nie kolidują ze sobą).
-* Wszystkie liczniki czasu to zwykłe pola aktualizowane w `_physics_process`,
-  bez `await`, dzięki czemu restart nigdy nie ściga się z zaplanowanym timerem.
-* Nowe asteroidy powstają wyłącznie **poza obsługą kolizji**. Podział jest
-  zgłaszany z `Asteroid.destroyed`, czyli w trakcie flushowania zapytań serwera
-  fizyki, gdzie nie wolno dodawać kształtów kolizji. `Main` rozstrzyga wtedy
-  losowanie od razu (żeby układ pozostał powtarzalny), a same węzły tworzy
-  w wywołaniu odroczonym; fala nie może zostać uznana za wyczyszczoną, dopóki
-  kolejka odroczonych spawnów nie jest pusta.
+* **Typed GDScript** and short, single-purpose scripts instead of one large
+  controller responsible for everything.
+* Communication through **signals** (`Player.fired`, `Player.died`, and
+  `Asteroid.destroyed`) rather than polling unrelated nodes.
+* Asteroids join the **`Arena.ASTEROID_GROUP` group**, so the wave-cleared
+  condition does not depend on their parent node. There are no absolute node
+  paths such as `/root/Main/...`.
+* `Arena` is a standalone helper containing arena constants and the shared
+  `wrap()` function used by the ship, bullets, and asteroids.
+* Collision layers are named in `project.godot`: `player`, `asteroids`, and
+  `bullets`. Collision masks are minimal, and asteroids do not collide with
+  one another.
+* Timers are ordinary fields updated in `_physics_process` rather than
+  `await`-based tasks, preventing a restart from racing a previously scheduled
+  timer.
+* New asteroids are created **outside collision handling**. Splitting is
+  reported through `Asteroid.destroyed` while the physics server is flushing
+  queries, when adding collision shapes is forbidden. `Main` resolves random
+  values immediately to preserve determinism, then creates the nodes through
+  a deferred call. A wave cannot be considered cleared while the deferred
+  spawn queue is non-empty.
 
-## Grafika
+## Artwork
 
-Cała grafika w `assets/` jest **oryginalna i stworzona lokalnie w Aseprite**
-na potrzeby tego repozytorium. Nie użyto żadnych materiałów zewnętrznych,
-pobranych ani objętych cudzymi prawami autorskimi. W repozytorium leżą zarówno
-źródła `.aseprite` (do dalszej edycji), jak i wyeksportowane PNG:
+All artwork in `assets/` is **original and was created locally in Aseprite**
+for this repository. No external, downloaded, or third-party copyrighted
+materials were used. The repository includes both editable `.aseprite`
+sources and exported PNG files:
 
-| Plik              | Rozmiar | Zastosowanie                       |
-| ----------------- | ------- | ---------------------------------- |
-| `ship`            | 32×32   | statek gracza                      |
-| `ship_thrust`     | 16×32   | płomień silnika                    |
-| `bullet`          | 8×8     | pocisk                             |
-| `asteroid_large`  | 64×64   | duża asteroida                     |
-| `asteroid_medium` | 40×40   | średnia asteroida                  |
-| `asteroid_small`  | 24×24   | mała asteroida                     |
-| `starfield`       | 128×128 | kafelkowe tło z gwiazdami          |
-| `life_icon`       | 16×16   | ikona życia w HUD                  |
+| File              | Size    | Purpose                         |
+| ----------------- | ------- | ------------------------------- |
+| `ship`            | 32×32   | player ship                     |
+| `ship_thrust`     | 16×32   | engine flame                    |
+| `bullet`          | 8×8     | projectile                      |
+| `asteroid_large`  | 64×64   | large asteroid                  |
+| `asteroid_medium` | 40×40   | medium asteroid                 |
+| `asteroid_small`  | 24×24   | small asteroid                  |
+| `starfield`       | 128×128 | tiled star background           |
+| `life_icon`       | 16×16   | HUD life indicator              |
 
-Projekt renderuje pixel art w trybie **nearest-neighbour**
-(`textures/canvas_textures/default_texture_filter=0`), a wszystkie sprite'y
-poza tłem mają przezroczystość.
+The project renders pixel art with **nearest-neighbour filtering**
+(`textures/canvas_textures/default_texture_filter=0`), and every sprite except
+the background uses transparency.
 
-Projekt nie zawiera dźwięku — świadomie, żeby nie wprowadzać materiałów
-niewytworzonych lokalnie.
+The project intentionally has no sound so that it does not introduce assets
+that were not created locally.
 
-## Opcjonalnie: lokalny dodatek Godot AI
+## Optional local Godot AI plugin
 
-Projekt był rozwijany z pomocą lokalnego dodatku *Godot AI* do inspekcji sceny
-i automatycznych testów rozgrywki. Dodatek jest **narzędziem deweloperskim
-osoby pracującej nad projektem i nie jest częścią tego repozytorium** — nie ma
-go w historii Gita i nie jest potrzebny do uruchomienia gry.
+The project was developed with a local *Godot AI* plugin for scene inspection
+and automated gameplay testing. The plugin is a developer tool and **is not
+part of this repository**. It does not appear in Git history and is not
+required to run the game.
 
-Jeśli chcesz go użyć u siebie, zainstaluj go we własnym katalogu
-`addons/`, włącz w `Project → Project Settings → Plugins` i **nie commituj**
-ani katalogu dodatku, ani wpisów, które sam dopisuje do `project.godot`
-(`[editor_plugins]` oraz autoload `_mcp_game_helper`). Gałąź główna celowo
-trzyma `project.godot` wolny od tych wpisów, żeby świeży klon działał bez
-dodatku.
+To use it locally, install it in your own `addons/` directory, enable it under
+`Project → Project Settings → Plugins`, and **do not commit** either the plugin
+directory or the entries it adds to `project.godot` (`[editor_plugins]` and
+the `_mcp_game_helper` autoload). The main branch deliberately keeps
+`project.godot` free of these entries so a fresh clone works without the
+plugin.
 
-## Historia
+## History
 
-Repozytorium zaczęło się od pustego szkieletu (w tym testowego pusha
-z GitHub Copilot App); ta gałąź wnosi pierwszą grywalną wersję MVP.
+The repository began as an empty skeleton, including a test push from the
+GitHub Copilot App. This is its first playable MVP.
