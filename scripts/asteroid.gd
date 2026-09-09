@@ -19,6 +19,7 @@ const RADII := [9.0, 16.0, 26.0]
 const BASE_SPEEDS := [118.0, 84.0, 56.0]
 const SPIN_SPEEDS := [2.1, 1.4, 0.85]
 const POINTS := [100, 50, 20]
+const SPEED_JITTER := Vector2(0.85, 1.2)
 
 var size_index := Size.LARGE
 var velocity := Vector2.ZERO
@@ -27,12 +28,27 @@ var spin := 0.0
 var _destroyed := false
 
 
+## Rolls the launch velocity for a rock that has not been instantiated yet.
+## Keeping the random draw separate from the node lets the caller resolve a
+## spawn the moment it is requested and build the node later, so nothing
+## touches the physics server while it is flushing collision callbacks.
+static func roll_velocity(for_size: int, heading: float, rng: RandomNumberGenerator) -> Vector2:
+	var speed: float = BASE_SPEEDS[for_size] * rng.randf_range(SPEED_JITTER.x, SPEED_JITTER.y)
+	return Vector2.RIGHT.rotated(heading) * speed
+
+
+## Rolls the spin that pairs with `roll_velocity`; call it straight after so the
+## RNG stream stays in a fixed, reproducible order.
+static func roll_spin(for_size: int, rng: RandomNumberGenerator) -> float:
+	return SPIN_SPEEDS[for_size] * (1.0 if rng.randf() < 0.5 else -1.0)
+
+
 ## Must be called before the asteroid enters the tree.
-func configure(new_size: int, spawn_position: Vector2, heading: float, rng: RandomNumberGenerator) -> void:
+func configure(new_size: int, spawn_position: Vector2, new_velocity: Vector2, new_spin: float) -> void:
 	size_index = clampi(new_size, Size.SMALL, Size.LARGE)
 	position = spawn_position
-	velocity = Vector2.RIGHT.rotated(heading) * BASE_SPEEDS[size_index] * rng.randf_range(0.85, 1.2)
-	spin = SPIN_SPEEDS[size_index] * (1.0 if rng.randf() < 0.5 else -1.0)
+	velocity = new_velocity
+	spin = new_spin
 
 
 func _ready() -> void:
@@ -61,9 +77,14 @@ func can_split() -> bool:
 
 
 ## Destroys the asteroid once, even if two bullets connect on the same frame.
+##
+## Leaving the group here rather than waiting for `queue_free()` keeps the
+## "field cleared" test honest: a rock scheduled for deletion is already gone as
+## far as wave tracking is concerned.
 func take_hit() -> void:
 	if _destroyed:
 		return
 	_destroyed = true
+	remove_from_group(Arena.ASTEROID_GROUP)
 	destroyed.emit(self)
 	queue_free()

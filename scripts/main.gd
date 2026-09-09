@@ -22,6 +22,21 @@ const SPLIT_SPREAD := 0.7
 const RESPAWN_DELAY := 1.2
 const WAVE_DELAY := 1.8
 
+
+## A spawn that has been fully resolved (position, velocity, spin) but whose
+## node has not been built yet.
+##
+## Splits are requested from `Asteroid.destroyed`, which fires while the physics
+## server is flushing its collision callbacks. Instantiating a rock there would
+## add a collision shape mid-flush, so the random draws happen immediately —
+## keeping the RNG stream deterministic — while node creation is deferred.
+class PendingSpawn:
+	var size_index: int
+	var spawn_position: Vector2
+	var velocity: Vector2
+	var spin: float
+
+
 var _score := 0
 var _lives := STARTING_LIVES
 var _wave := 0
@@ -32,6 +47,8 @@ var _wave_pending := false
 
 var _rng := RandomNumberGenerator.new()
 var _restart_held := false
+var _pending_spawns: Array[PendingSpawn] = []
+var _spawn_flush_queued := false
 
 @onready var _player: Player = $Player
 @onready var _asteroids: Node2D = $Asteroids
@@ -76,6 +93,7 @@ func _start_game() -> void:
 
 	_clear_container(_asteroids)
 	_clear_container(_bullets)
+	_pending_spawns.clear()
 
 	_hud.set_score(_score)
 	_hud.set_lives(_lives)
@@ -100,6 +118,10 @@ func _tick_waves(delta: float) -> void:
 			_wave_pending = false
 			_start_wave()
 		return
+	# Splits are only registered once the deferred flush runs, so a field that
+	# merely looks empty right now must not be mistaken for a cleared wave.
+	if not _pending_spawns.is_empty():
+		return
 	if get_tree().get_nodes_in_group(Arena.ASTEROID_GROUP).is_empty():
 		_wave_pending = true
 		_wave_timer = WAVE_DELAY
@@ -111,7 +133,7 @@ func _start_wave() -> void:
 	_rng.seed = WAVE_SEED_BASE + _wave * WAVE_SEED_STRIDE
 	var count := mini(FIRST_WAVE_ASTEROIDS + _wave - 1, MAX_WAVE_ASTEROIDS)
 	for _i in count:
-		_spawn_asteroid(Asteroid.Size.LARGE, _pick_spawn_point(), _rng.randf_range(0.0, TAU))
+		_queue_spawn(Asteroid.Size.LARGE, _pick_spawn_point(), _rng.randf_range(0.0, TAU))
 	_hud.show_banner("WAVE %d" % _wave, 1.3)
 
 
@@ -126,11 +148,32 @@ func _pick_spawn_point() -> Vector2:
 	return Arena.SIZE - reference
 
 
-func _spawn_asteroid(size_index: int, spawn_position: Vector2, heading: float) -> void:
-	var asteroid: Asteroid = ASTEROID_SCENE.instantiate()
-	asteroid.configure(size_index, spawn_position, heading, _rng)
-	asteroid.destroyed.connect(_on_asteroid_destroyed)
-	_asteroids.add_child(asteroid)
+## Resolves a spawn now and builds the node once the physics server is idle.
+## The RNG is read here, in call order, so wave layouts and split trajectories
+## stay bit-for-bit reproducible regardless of when the node is created.
+func _queue_spawn(size_index: int, spawn_position: Vector2, heading: float) -> void:
+	var request := PendingSpawn.new()
+	request.size_index = clampi(size_index, Asteroid.Size.SMALL, Asteroid.Size.LARGE)
+	request.spawn_position = spawn_position
+	request.velocity = Asteroid.roll_velocity(request.size_index, heading, _rng)
+	request.spin = Asteroid.roll_spin(request.size_index, _rng)
+	_pending_spawns.append(request)
+
+	if _spawn_flush_queued:
+		return
+	_spawn_flush_queued = true
+	_flush_pending_spawns.call_deferred()
+
+
+func _flush_pending_spawns() -> void:
+	_spawn_flush_queued = false
+	var requests := _pending_spawns.duplicate()
+	_pending_spawns.clear()
+	for request in requests:
+		var asteroid: Asteroid = ASTEROID_SCENE.instantiate()
+		asteroid.configure(request.size_index, request.spawn_position, request.velocity, request.spin)
+		asteroid.destroyed.connect(_on_asteroid_destroyed)
+		_asteroids.add_child(asteroid)
 
 
 func _clear_container(container: Node2D) -> void:
@@ -165,4 +208,4 @@ func _on_asteroid_destroyed(asteroid: Asteroid) -> void:
 	for i in 2:
 		var offset := SPLIT_SPREAD if i == 0 else -SPLIT_SPREAD
 		var heading := base_heading + offset + _rng.randf_range(-0.25, 0.25)
-		_spawn_asteroid(child_size, asteroid.global_position, heading)
+		_queue_spawn(child_size, asteroid.global_position, heading)
