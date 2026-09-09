@@ -17,11 +17,35 @@ oryginalny pixel art wykonany lokalnie w Aseprite.
 1. Otwórz katalog projektu w Godot (`Import` → wskaż `project.godot`).
 2. Naciśnij **F5** albo uruchom scenę główną `res://scenes/main.tscn`.
 
-Z poziomu terminala, jeśli Godot jest w `PATH`:
+Z poziomu terminala, jeśli Godot jest w `PATH`. Świeży klon nie ma jeszcze
+katalogu `.godot/`, więc zasoby (tekstury) nie są zaimportowane i samo
+`godot --path .` wystartuje z brakującą grafiką. Najpierw wykonaj import:
 
 ```sh
+# jednorazowo po sklonowaniu — import zasobów
+godot --headless --path . --import
+
+# potem normalne uruchomienie
 godot --path .
 ```
+
+Zamiast `--import` możesz też raz otworzyć projekt w edytorze
+(`godot --editor --path .`), poczekać aż zakończy się import i zamknąć go —
+efekt jest ten sam.
+
+## Testy
+
+```sh
+tests/run_split_stress.sh          # albo: GODOT_BIN=/ścieżka/do/godot tests/run_split_stress.sh
+```
+
+`tests/split_stress.gd` to bezgłowy test regresji podziału asteroid: rozbija
+całą pierwszą falę aż do najmniejszych odłamków (dwa przebiegi, 9 podziałów
+każdy) i sprawdza liczbę odłamków, punktację, brak utraty żyć, przejście do
+kolejnej fali dopiero po zarejestrowaniu odroczonych spawnów oraz powtarzalność
+trajektorii. Skrypt powłoki dodatkowo zawodzi, gdy silnik zgłosi błędy
+serwera fizyki (`Can't change this state while flushing queries`), których
+GDScript nie jest w stanie zaobserwować z wnętrza gry.
 
 ## Sterowanie
 
@@ -72,6 +96,9 @@ scripts/
 assets/
   aseprite/            edytowalne źródła .aseprite
   sprites/             wyeksportowane PNG (przezroczyste, nearest-neighbour)
+tests/
+  split_stress.gd      bezgłowy test regresji podziału asteroid
+  run_split_stress.sh  uruchamia powyższy test i wyłapuje błędy serwera fizyki
 docs/                  zrzut ekranu do README (pomijany przez Godota, .gdignore)
 ```
 
@@ -90,6 +117,12 @@ Zasady, których trzyma się kod:
   `bullets`; maski są minimalne (asteroidy nie kolidują ze sobą).
 * Wszystkie liczniki czasu to zwykłe pola aktualizowane w `_physics_process`,
   bez `await`, dzięki czemu restart nigdy nie ściga się z zaplanowanym timerem.
+* Nowe asteroidy powstają wyłącznie **poza obsługą kolizji**. Podział jest
+  zgłaszany z `Asteroid.destroyed`, czyli w trakcie flushowania zapytań serwera
+  fizyki, gdzie nie wolno dodawać kształtów kolizji. `Main` rozstrzyga wtedy
+  losowanie od razu (żeby układ pozostał powtarzalny), a same węzły tworzy
+  w wywołaniu odroczonym; fala nie może zostać uznana za wyczyszczoną, dopóki
+  kolejka odroczonych spawnów nie jest pusta.
 
 ## Grafika
 
