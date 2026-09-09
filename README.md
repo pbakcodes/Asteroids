@@ -5,3 +5,5 @@ Gra **Asteroids** tworzona w Godot z wykorzystaniem agentów AI do wspomagania d
 ## Status
 
 Projekt jest w początkowej fazie przygotowania.
+
+Test push from GitHub Copilot App.
